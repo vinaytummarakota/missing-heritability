@@ -1,0 +1,33 @@
+---
+title: "Adoptive Sibling Correlation"
+author: "Vinay Tummarakota"
+date: "2025-12-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+library(metafor)
+```
+
+```{r fig.width = 12}
+df <- read_excel("./adoptive_sibling_correlations.xlsx")
+
+# I'm just following the steps for meta-analyzing correlation coefficients outlined in this tutorial: https://www.metafor-project.org/doku.php/tips:hunter_schmidt_method
+
+effect_size_df <- escalc(measure = "COR", ri = correlation, ni = sample_size, data = df, vtype = "AV") %>%
+  arrange(yi)
+
+# I used a multi-level model where the study is the first grouping variable (i.e. all effect sizes estimated by the same study), and measure is the second grouping variable (i.e. all correlations in the same study corresponding to the same IQ measure)
+
+# I would normally set method = "HS" as per the tutorial, but the Hunter-Schmidt estimator doesn't support multi-level modeling apparently
+
+# I changed the tolerance parameter so that the model would converge
+
+meta <- rma.mv(yi = yi, V = vi, W = sample_size, data = effect_size_df, slab = study, random = ~1 | study/measure, control=list(rel.tol=1e-8))
+
+forest(meta, slab = study, ilab = cbind(type, measure, sample_size), ilab.lab = c("Relationship Type", "IQ Measure", "N Pairs"), ilab.pos = 4, ilab.xpos=c(-1.3, -1, -0.4), cex = 0.75)
+```
